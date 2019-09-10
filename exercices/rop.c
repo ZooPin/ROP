@@ -1,13 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-void vuln()
+void input()
 {
-  char buffer[64];
+  char buffer[94];
   printf("Input: \n");
   scanf("%s",buffer);
 }
 int main(int argc, char **argv)
 {
-  vuln();
+  input();
 }

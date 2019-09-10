@@ -21,7 +21,8 @@ RUN pip install --upgrade   pip \
 RUN git clone https://github.com/longld/peda.git ~/.peda
 RUN echo "source ~/.peda/peda.py" >> ~/.gdbinit
 
-COPY rop.c rop.c
-COPY exploit.py exploit.py
+COPY ./exercices/* ./
 
+
+RUN rm -r /root/bin
 RUN gcc rop.c -fno-stack-protector -no-pie -m32 -o rop
