@@ -1,17 +1,19 @@
-FROM debian:bullseye
+FROM debian:bullseye-slim
 
 WORKDIR /root
 
-RUN apt update
-RUN apt install -y  binutils-common \
-                    gcc-multilib \
-                    vim \
-                    gdb-multiarch \
-                    git \
-                    python \
-                    python-pip \
-                    bash
+RUN apt update && apt install -y --no-install-recommends    binutils-common \
+                                                            gcc-multilib \
+                                                            vim \
+                                                            gdb-multiarch \
+                                                            git \
+                                                            python \
+                                                            python-dev \
+                                                            python-pip \
+                                                            bash \
+    && rm -rf /var/lib/apt/lists/*
 
+RUN pip install --upgrade setuptools
 RUN pip install --upgrade   pip \
                             ropgadget \
                             pwntools
