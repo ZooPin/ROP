@@ -18,9 +18,10 @@ RUN pip install --upgrade   pip \
                             ropgadget \
                             pwntools
 
-RUN git clone https://github.com/longld/peda.git ~/peda
-RUN echo "source ~/peda/peda.py" >> ~/.gdbinit
+RUN git clone https://github.com/longld/peda.git ~/.peda
+RUN echo "source ~/.peda/peda.py" >> ~/.gdbinit
 
 COPY rop.c rop.c
+COPY exploit.py exploit.py
 
 RUN gcc rop.c -fno-stack-protector -no-pie -m32 -o rop
