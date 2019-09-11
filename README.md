@@ -91,9 +91,9 @@ Nous avons donc un offset de 106.
 
 Le ROP (return object programming) nous permet deux choses. Contourner la protection de pile non executable et la protection ASLR du système qui permet la répartition aléatoire des adresses mémoire a chaque lancement de l'éxécutable.
 La méthode du ROP que nous allons utiliser est la plus classique et se divise en 3 partie :
-• ret2plt qui permet de récupérer l'addresse de la libc (dont la base est aléatoire via l'ASLR)
-• ret2main qui permet de retouner au début du program sans relancer l'executable et donc ne pas embêter par l'ASLR.
-• ret2libc qui permet de lancer n'importe quelle fonction présente dans la libc ici nous utiliseront system.
+* ret2plt qui permet de récupérer l'addresse de la libc (dont la base est aléatoire via l'ASLR)
+* ret2main qui permet de retouner au début du program sans relancer l'executable et donc ne pas relancer l'ASLR.
+* ret2libc qui permet de lancer n'importe quelle fonction présente dans la libc ici nous utiliseront system.
 
 Mais du coup c'est quoi ret2XXX ?
 
