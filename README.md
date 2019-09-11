@@ -80,6 +80,9 @@ Legend: code, data, rodata, value
 Stopped reason: SIGSEGV
 0x64413564 in ?? ()
 ```
+```
+EIP: 0x64413564 ('d5Ad')
+```
 
 La ligne qui nous intéresse est `EIP: 0x64413564 ('d5Ad')` sur le site où nous avons crée notre unique string nous pouvons calculer l'offset et trouver a partir de quelle moment nous prenons contrôle du registre EIP.
 
@@ -142,6 +145,9 @@ root@10b97ae13330:~# objdump -d rop | grep "<puts@plt>"
 08849f30 <puts@plt>:
 0884a08e:	e8 9d fe ff ff       	call   08849f30 <puts@plt>
 ```
+```
+08849f30 <puts@plt>:
+```
 
 Nous avons donc les addresses de :
 
@@ -175,6 +181,10 @@ root@10b97ae13330:~# ROPgadget --binary rop | grep pop
 0x09849241 : pop esi ; pop edi ; pop ebp ; ret
 0x09849026 : sal byte ptr [edx + eax - 1], 0xd0 ; add esp, 8 ; pop ebx ; ret
 ```
+```
+0x09849243 : pop ebp ; ret
+0x0984902e : pop ebx ; ret
+```
 
 Nous avons donc deux choix:
 * 0x09849243 : `pop ebp ; ret`
@@ -197,6 +207,9 @@ Dump of assembler code for function main:
    0x089491cd <+27>:	ret    
 End of assembler dump.
 ```
+```
+0x089491b1 <+0>:	push   ebp
+```
 
 Nous avons donc l'addresse du main: `0x089491b1`.
 
@@ -213,7 +226,7 @@ Notre premier payload va donc être :
 
 Avec tout ça nous pouvons complèter [part1.py](./exercices/part1.py)
 
-Quand vous le lancez vous devriez avoir une sortie du même style
+Quand vous le lancez vous devriez avoir une sortie de la sorte
 ```
 root@9e139f0c7ef4:~# python part1.py 
 [*] '/root/rop'
