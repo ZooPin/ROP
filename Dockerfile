@@ -5,6 +5,7 @@ WORKDIR /root
 RUN apt update && apt install -y --no-install-recommends    binutils-common \
                                                             gcc-multilib \
                                                             vim \
+                                                            nano \
                                                             gdb-multiarch \
                                                             git \
                                                             python \

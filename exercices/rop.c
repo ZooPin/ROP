@@ -3,7 +3,7 @@
 
 void input()
 {
-  char buffer[94];
+  char buffer[106];
   printf("Input: \n");
   scanf("%s",buffer);
 }

